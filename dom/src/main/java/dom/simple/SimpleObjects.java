@@ -1,0 +1,140 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one
+ *  or more contributor license agreements.  See the NOTICE file
+ *  distributed with this work for additional information
+ *  regarding copyright ownership.  The ASF licenses this file
+ *  to you under the Apache License, Version 2.0 (the
+ *  "License"); you may not use this file except in compliance
+ *  with the License.  You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
+ */
+package dom.simple;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.isis.applib.DomainObjectContainer;
+import org.apache.isis.applib.annotation.*;
+import org.apache.isis.applib.annotation.ActionSemantics.Of;
+import org.apache.isis.applib.services.memento.MementoService;
+import org.apache.isis.applib.services.memento.MementoService.Memento;
+
+@DomainService(menuOrder = "10", repositoryFor = SimpleObject.class)
+public class SimpleObjects {
+
+	// region > identification in the UI
+	// //////////////////////////////////////
+
+	public String getId() {
+		return "simple";
+	}
+
+	public String iconName() {
+		return "SimpleObject";
+	}
+
+	// endregion
+
+	// region > listAll (action)
+	// //////////////////////////////////////
+
+	@Bookmarkable
+	@ActionSemantics(Of.SAFE)
+	@MemberOrder(sequence = "1")
+	public List<SimpleObject> listAll() {
+		return container.allInstances(SimpleObject.class);
+	}
+
+	// endregion
+
+	// region > create (action)
+	// //////////////////////////////////////
+
+	@MemberOrder(sequence = "2")
+	public SimpleObject create(final @Named("Name") String name,
+			final @Named("Cantidad") int cantidad) {
+		final SimpleObject obj = container
+				.newTransientInstance(SimpleObject.class);
+		obj.setName(name);
+		obj.setCantidad(cantidad);
+		container.persistIfNotAlready(obj);
+		return obj;
+	}
+
+	// endregion
+
+	// {{ actionName (action)
+	@MemberOrder(sequence = "3")
+	public SimpleObjectViewModel simpleObjectsViewModel(
+			final SimpleObject simpleObject) {
+
+		int cantidadx2 = simpleObject.getCantidad() * 2;
+		double cantidadDividido3 = simpleObject.getCantidad() / 3;
+
+		Memento m = mementoService.create();
+
+		m.set("nombre", simpleObject.getName());
+		m.set("cantidad", simpleObject.getCantidad());
+		m.set("cantidadX2", cantidadx2);
+		m.set("cantidadDividido3", cantidadDividido3);
+
+		return container.newViewModelInstance(SimpleObjectViewModel.class,
+				m.asString());
+	}
+
+	// }}
+
+	// {{ listViewModels (action)
+	@MemberOrder(sequence = "4")
+	public List<SimpleObjectViewModel> listViewModels() {
+
+		List<SimpleObject> tempList = container
+				.allInstances(SimpleObject.class);
+		List<SimpleObjectViewModel> viewModelList = new ArrayList<SimpleObjectViewModel>();
+
+		for (SimpleObject simple : tempList) {
+			viewModelList.add(simpleObjectsViewModel(simple));
+		}
+
+		return viewModelList;
+	}
+
+	// }}
+
+	// {{ externalLink (action)
+	@MemberOrder(sequence = "5")
+	public java.net.URL externalLink(@Named("URL sin 'http://'")final String urlString) {
+		URL url = null;
+
+		try {
+			url = new URL("http://" + urlString);
+		} catch (MalformedURLException e) {
+
+			container.warnUser("Formato de URL incorrecto");
+		}
+		return url;
+	}
+
+	// }}
+
+	// region > injected services
+	// //////////////////////////////////////
+
+	@javax.inject.Inject
+	DomainObjectContainer container;
+	@javax.inject.Inject
+	MementoService mementoService;
+
+	// endregion
+
+}
